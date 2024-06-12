@@ -2,7 +2,7 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
-typedef struct DHT11Data{
+struct DHT11Data{
     float temperature;
     float humidity;
 };
@@ -23,8 +23,8 @@ public:
         DHT11Data data;
         dht.temperature().getEvent(&event);
         data.temperature = event.temperature;
+        dht.humidity().getEvent(&event);
         data.humidity = event.relative_humidity;
-
         return data;
     }
 private:

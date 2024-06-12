@@ -1,7 +1,7 @@
 #include "PMS.h"
 #include "Arduino.h"
 
-typedef struct PMS5003Data {
+struct PMS5003Data {
     int pm2_5;
 };
 
@@ -19,6 +19,7 @@ public:
         PMS5003Data pmsdata;
         if(pms.readUntil(data)){
             pmsdata.pm2_5 = data.PM_AE_UG_2_5;
+            Serial.println(pmsdata.pm2_5);
         }
 
         return pmsdata;

@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-typedef struct MQ2Data{
+struct MQ2Data{
     int gasValue;
 };
 

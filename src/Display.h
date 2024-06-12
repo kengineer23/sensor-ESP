@@ -32,4 +32,15 @@ public:
         tft.setCursor(10,40);
         tft.println("I am ISAAC");
     }
+
+    void displaydata(float temperature, float humidity, int pm2_5){
+        tft.setCursor(10,10);
+        tft.println(String(temperature) + " °C");
+
+        tft.setCursor(10,40);
+        tft.println(String(humidity) + " %");
+
+        tft.setCursor(10,70);
+        tft.println(String(pm2_5) + " µg/m3");
+    }
 };
