@@ -1,0 +1,153 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+
+#include <DHT11Sensor.h>
+#include <PMS5003Sensor.h>
+#include <MQ2Sensor.h>
+#include <Display.h>
+
+
+//WiFi Credentials
+const char* ssid = "Devesh Gulati";
+const char* password = "0987654321";
+const char* serverURL = "http://192.168.1.9:5000/store-data";
+
+//DHT11 setup
+#define DHTPIN 5
+#define DHTTYPE DHT11
+DHT11Sensor dht11(DHTPIN, DHTTYPE);
+
+//MQ2 setup
+#define MQ2 33
+MQ2Sensor mq2(MQ2);
+
+//PMS5003 object 
+PMS5003Sensor pms5003;
+
+
+//ILI9341 setup
+ili9341 display;
+
+//Task Handles
+TaskHandle_t TaskDHT11Handle;
+TaskHandle_t TaskPMS5003Handle;
+TaskHandle_t TaskMQ2Handle;
+TaskHandle_t TaskSendToServerHandle;
+TaskHandle_t TaskDisplayDataHandle;
+
+// Data Storage
+struct SensorData {
+  DHT11Data dht11;
+  PMS5003Data pms5003;
+  MQ2Data mq2; 
+};
+SensorData sensorData;  //a variable of type SensorData
+
+
+//Task1code: collect Temperature, Humidity data
+/* The parameter 'pvParameters' is a pointer to void, allowing any type of data to be passed to the task.
+This provides flexibility, as the task function can cast 'pvParameters' to the appropriate type as needed.
+For example, it can be used to pass a structure containing configuration data or a simple integer value.
+When creating the task, this parameter can be specified by the caller to customize the task's behavior or 
+provide it with the necessary context information. */
+
+void TaskDHT11(void *pvParameters) {
+  while (1) {
+    sensorData.dht11 = dht11.readDHT11();
+    if (isnan(sensorData.dht11.temperature) || isnan(sensorData.dht11.humidity)) {
+      Serial.println("Failed to read from DHT sensor!");
+    } else {
+      Serial.print("DHT11 - Temperature: ");
+      Serial.print(sensorData.dht11.temperature);
+      Serial.print(" *C, Humidity: ");
+      Serial.print(sensorData.dht11.humidity);
+      Serial.println(" %");
+    }
+    vTaskDelay(20000 / portTICK_PERIOD_MS); // Delay for 20 seconds
+  }
+}
+
+void TaskPMS5003(void *pvParameters) {
+  while (1) {
+    sensorData.pms5003 = pms5003.readData();
+    Serial.print("PM2.5: ");
+    Serial.print(sensorData.pms5003.pm2_5);
+    vTaskDelay(2000 / portTICK_PERIOD_MS); // Delay for 2 seconds
+  }
+}
+
+
+void TaskMQ2(void *pvParameters) {
+  while (1) {
+    sensorData.mq2 = mq2.gasRead();
+    if(sensorData.mq2.gasValue == 1){
+      Serial.println("Gas Detected");
+    }
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // Delay for 5 seconds
+  }
+}
+
+void TaskSendToServer(void *pvParameters) {
+  while (1) {
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      http.begin(serverURL);
+      http.addHeader("Content-Type", "application/json");
+
+      // Create JSON payload
+      String jsonPayload = "{";
+      jsonPayload += "\"temperature\":" + String(sensorData.dht11.temperature) + ",";
+      jsonPayload += "\"humidity\":" + String(sensorData.dht11.humidity) + ",";
+      jsonPayload += "\"pm2_5\":" + String(sensorData.pms5003.pm2_5) + ",";
+      //jsonPayload += "\"lpg\":" + String(sensorData.mq2.lpg);
+      jsonPayload += "}";
+
+      int httpResponseCode = http.POST(jsonPayload);
+
+      if (httpResponseCode > 0) {
+        Serial.printf("HTTP Response code: %d\n", httpResponseCode);
+      } else {
+        Serial.printf("Error code: %d\n", httpResponseCode);
+      }
+      http.end();
+    } else {
+      Serial.println("WiFi Disconnected");
+    }
+    vTaskDelay(20000 / portTICK_PERIOD_MS); // Send data every 60 seconds
+  }
+}
+
+void TaskDisplayData(){
+  
+
+}
+
+void setup(){
+  Serial.begin(9600);
+
+  dht11.begin();
+  pms5003.begin();
+  display.begin();
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+
+  // Create tasks
+  xTaskCreatePinnedToCore(TaskDHT11, "TaskDHT11", 2048, NULL, 1, &TaskDHT11Handle, 0);
+  xTaskCreatePinnedToCore(TaskPMS5003, "TaskPMS5003", 2048, NULL, 1, &TaskPMS5003Handle, 0);
+  xTaskCreatePinnedToCore(TaskMQ2, "TaskMQ2", 2048, NULL, 1, &TaskMQ2Handle, 0);
+  xTaskCreatePinnedToCore(TaskSendToServer, "TaskSendToServer", 4096, NULL, 1, &TaskSendToServerHandle, 0);
+  xTaskCreatePinnedToCore(TaskDisplayData, "TaskDisplayData", 2048, NULL, 1, &TaskDisplayDataHandle, 1);
+}
+
+void loop(){
+
+  //Do nothing here
+
+}
