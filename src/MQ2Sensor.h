@@ -1,4 +1,6 @@
-#include <Arduino.h>
+#ifndef MQ_2_SENSOR_H
+#define MQ_2_SENSOR_H
+
 
 struct MQ2Data{
     int gasValue;
@@ -7,16 +9,12 @@ struct MQ2Data{
 
 class MQ2Sensor{
 public:
-    MQ2Sensor(uint8_t pin) : gaspin(pin){   //constructor : initializer list
-        pinMode(gaspin, INPUT);
-    }
+    MQ2Sensor(uint8_t pin);
 
-    MQ2Data gasRead(){
-        MQ2Data data;
-        data.gasValue = digitalRead(gaspin);
-
-        return data;
-        }
+    //Member function(s)
+    MQ2Data gasRead();
 private:
     uint8_t gaspin;
 };
+
+#endif // !MQ_2_SENSOR_H
