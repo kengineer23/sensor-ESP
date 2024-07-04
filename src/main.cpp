@@ -8,11 +8,12 @@
 #include <MQ2Sensor.h>
 #include "AnimatedEye.h"
 #include <BLDC.h>
+#include "BLEWiFi.h"
 
 
 //WiFi Credentials
-const char* ssid = "S24";
-const char* password = "kanishk23";
+String ssid;
+String password;
 const char* serverURL = "http://192.168.103.68:5000/store-data";
 
 //DHT11 setup
@@ -222,12 +223,8 @@ void setup(){
   dht11.init();
   pms5003.begin();
 
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-  Serial.println("Connected to WiFi");
+  setupBLE();
+  bool proceed = setupWiFi();
 
   // Create semaphores
   //xDisplaySemaphore = xSemaphoreCreateCounting(3,0);
@@ -244,15 +241,16 @@ void setup(){
     while(1);
   }
 
-  // Create tasks
-  //(Function to implement the task, Name of the task, Stack size, Task input parameter, Priority of the task, Task handle, Core ID);
-  xTaskCreatePinnedToCore(TaskDHT11, "TaskDHT11", 2048, NULL, 1, &TaskDHT11Handle, 0);
-  xTaskCreatePinnedToCore(TaskPMS5003, "TaskPMS5003", 2048, NULL, 1, &TaskPMS5003Handle, 0);
-  //xTaskCreatePinnedToCore(TaskMQ2, "TaskMQ2", 2048, NULL, 1, &TaskMQ2Handle, 0);
-  xTaskCreatePinnedToCore(TaskSendToServer, "TaskSendToServer", 4096, NULL, 1, &TaskSendToServerHandle, 0);
-  xTaskCreatePinnedToCore(TaskDisplayEyes, "TaskDisplayEyes", 4096, NULL, 1, &TaskDisplayEyesHandle, 0);
-  xTaskCreatePinnedToCore(TaskControlMotor, "TaskControlMotor", 2048, NULL, 1, &TaskControlMotorHandle, 1);
-
+  if(proceed){
+    // Create tasks
+    //(Function to implement the task, Name of the task, Stack size, Task input parameter, Priority of the task, Task handle, Core ID);
+    xTaskCreatePinnedToCore(TaskDHT11, "TaskDHT11", 2048, NULL, 1, &TaskDHT11Handle, 0);
+    xTaskCreatePinnedToCore(TaskPMS5003, "TaskPMS5003", 2048, NULL, 1, &TaskPMS5003Handle, 0);
+    //xTaskCreatePinnedToCore(TaskMQ2, "TaskMQ2", 2048, NULL, 1, &TaskMQ2Handle, 0);
+    xTaskCreatePinnedToCore(TaskSendToServer, "TaskSendToServer", 4096, NULL, 1, &TaskSendToServerHandle, 0);
+    xTaskCreatePinnedToCore(TaskDisplayEyes, "TaskDisplayEyes", 4096, NULL, 1, &TaskDisplayEyesHandle, 0);
+    xTaskCreatePinnedToCore(TaskControlMotor, "TaskControlMotor", 2048, NULL, 1, &TaskControlMotorHandle, 1);
+  }
 }
 
 void loop(){
